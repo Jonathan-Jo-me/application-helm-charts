@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         AWS_REGION = 'ap-south-1'  // AWS region
-        EKS_CLUSTER_NAME = 'DevSecOps-Cluster'  // EKS cluster name
+        EKS_CLUSTER_NAME = 'DevSecOps-Clusterr'  // EKS cluster name
     }
 
     stages {
@@ -66,9 +66,15 @@ pipeline {
 
                             if (pod) {
                                 echo "Running integration tests in pod: ${pod}"
-                                sh """
-                                    export NODE_OPTIONS=--openssl-legacy-provider && kubectl exec ${pod} -- /bin/bash -c 'cd /path/to/integration/tests && npm run test:integ'
-                                """
+                                if (pod.contains('web-web-deployment')) {
+                                    sh """
+                                        export NODE_OPTIONS=--openssl-legacy-provider && kubectl exec ${pod} -- /bin/bash -c 'cd /path/to/web/integration/tests && npm run test:integ'
+                                    """
+                                } else {
+                                    sh """
+                                        export NODE_OPTIONS=--openssl-legacy-provider && kubectl exec ${pod} -- /bin/bash -c 'cd /path/to/integration/tests && npm run test:integ'
+                                    """
+                                }
                             } else {
                                 echo "No running pod found for ${podName}."
                             }
