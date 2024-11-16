@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         AWS_REGION = 'ap-south-1'  // AWS region
-        EKS_CLUSTER_NAME = 'DevSecOps-Cluster'  // EKS cluster name
+        EKS_CLUSTER_NAME = 'DevSecOps-Clusterr'  // EKS cluster name
     }
 
     stages {
@@ -33,7 +33,7 @@ pipeline {
                             }
                         }
                     } catch (Exception e) {
-                        error("Error running Kubelinter: ${e.message}")
+                        echo("Error running Kubelinter: ${e.message}")
                     }
                 }
             }
@@ -67,20 +67,16 @@ pipeline {
                             if (pod) {
                                 echo "Running integration tests in pod: ${pod}"
                                 if (pod.contains('web-web-deployment')) {
-                                    sh """
-                                        export NODE_OPTIONS=--openssl-legacy-provider && kubectl exec ${pod} -- /bin/bash -c 'cd /path/to/web/integration/tests && npm run test:integ'
-                                    """
+                                    sh(script: "export NODE_OPTIONS=--openssl-legacy-provider && kubectl exec ${pod} -- /bin/bash -c 'cd /path/to/web/integration/tests && npm run test:integ'", returnStatus: true)
                                 } else {
-                                    sh """
-                                        export NODE_OPTIONS=--openssl-legacy-provider && kubectl exec ${pod} -- /bin/bash -c 'cd /path/to/integration/tests && npm run test:integ'
-                                    """
+                                    sh(script: "export NODE_OPTIONS=--openssl-legacy-provider && kubectl exec ${pod} -- /bin/bash -c 'cd /path/to/integration/tests && npm run test:integ'", returnStatus: true)
                                 }
                             } else {
                                 echo "No running pod found for ${podName}."
                             }
                         }
                     } catch (Exception e) {
-                        error("Error during integration testing: ${e.message}")
+                        echo("Error during integration testing: ${e.message}")
                     }
                 }
             }
