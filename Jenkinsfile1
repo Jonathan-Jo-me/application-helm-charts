@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         AWS_REGION = 'ap-south-1'  // AWS region
-        EKS_CLUSTER_NAME = 'DevSecOps-Clusterr'  // EKS cluster name
+        EKS_CLUSTER_NAME = 'DevSecOps-Cluster'  // EKS cluster name
     }
 
     stages {
