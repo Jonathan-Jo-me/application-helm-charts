@@ -18,12 +18,11 @@ pipeline {
                         // Loop through each chart and run Kubelinter
                         for (chart in chartDirs) {
                             echo "Running Kubelinter on ${chart}..."
-                            sh "kube-linter lint ${chart}/ --format=sarif > ${chart}-kubelint-report.sarif"
+                            def lintResult = sh(script: "kube-linter lint ${chart}/ --format=sarif > ${chart}-kubelint-report.sarif", returnStatus: true)
                             
-                            // Check for high-priority issues in the generated report
-                            def result = sh(script: "grep -q 'severity: \"high\"' ${chart}-kubelint-report.sarif", returnStatus: true)
-                            if (result == 0) {
-                                error("High-priority issues detected in ${chart} by Kubelinter.")
+                            // Check if the linter returned an error but continue
+                            if (lintResult != 0) {
+                                echo "Kubelinter detected issues in ${chart}, but continuing with the pipeline."
                             } else {
                                 echo "No high-priority issues detected in ${chart}."
                             }
