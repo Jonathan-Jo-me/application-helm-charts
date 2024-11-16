@@ -1,0 +1,17 @@
+replicaCount: 1
+image:
+  repository: postgres
+  tag: 12.4-alpine
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 5432
+  clusterIP: None
+
+postgresUser: "postgres"
+postgresPassword: "postgres"
+postgresDb: "postgres"
+
+persistence:
+  enabled: false
