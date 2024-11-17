@@ -21,13 +21,15 @@ pipeline {
                             // Loop through each chart and run Kubelinter
                             for (chart in chartDirs) {
                                 echo "Running Kubelinter on ${chart}..."
-                                def lintResult = sh(script: "kube-linter lint ${chart}/ --format=sarif > ${chart}-kubelint-report.sarif", returnStatus: true, returnStdout: true).trim()
+                                
+                                // Run Kubelinter and capture both the status and the output
+                                def lintResult = sh(script: "kube-linter lint ${chart}/ --format=sarif", returnStatus: true, returnStdout: true).trim()
 
                                 // Log the linter output for debugging
                                 echo "Kubelinter output for ${chart}: ${lintResult}"
 
-                                // Check if the linter returned an error but continue
-                                if (lintResult != 0) {
+                                // Check the return status of the linter (exit code)
+                                if (currentBuild.result == 'FAILURE') {
                                     echo "Kubelinter detected issues in ${chart}, but continuing with the pipeline."
                                 } else {
                                     echo "No high-priority issues detected in ${chart}."
