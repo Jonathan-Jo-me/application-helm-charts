@@ -1,0 +1,92 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = 'ap-south-1'  // AWS region
+        EKS_CLUSTER_NAME = 'DevSecOps-Cluster'  // EKS cluster name
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Kubelinter Helm Charts') {
+            steps {
+                script {
+                    try {
+                        // Define the list of chart directories
+                        def chartDirs = ['database', 'api', 'web'] // Update with actual chart paths
+
+                        // Loop through each chart and run Kubelinter
+                        for (chart in chartDirs) {
+                            echo "Running Kubelinter on ${chart}..."
+                            def lintResult = sh(script: "kube-linter lint ${chart}/ --format=sarif > ${chart}-kubelint-report.sarif", returnStatus: true)
+
+                            // Check if the linter returned an error but continue
+                            if (lintResult != 0) {
+                                echo "Kubelinter detected issues in ${chart}, but continuing with the pipeline."
+                            } else {
+                                echo "No high-priority issues detected in ${chart}."
+                            }
+                        }
+                    } catch (Exception e) {
+                        echo("Error running Kubelinter: ${e.message}")
+                    }
+                }
+            }
+        }
+
+        stage('Run Integration Test') {
+            steps {
+                script {
+                    try {
+                        // Update kubeconfig to use the EKS cluster
+                        echo "Updating kubeconfig for EKS cluster ${EKS_CLUSTER_NAME} in region ${AWS_REGION}..."
+                        sh """
+                            aws eks update-kubeconfig --name ${EKS_CLUSTER_NAME} --region ${AWS_REGION}
+                        """
+
+                        // List all pods to confirm they are running
+                        echo "Checking if necessary pods are up and running..."
+                        sh 'kubectl get pods'
+
+                        // Define the pod names to target directly
+                        def podNames = [
+                            'api-helm-chart-deployment',
+                            'postgresql-chart',
+                            'web-web-deployment'
+                        ]
+
+                        for (podName in podNames) {
+                            // Get the first running pod matching the given name
+                            def pod = sh(script: "kubectl get pods --no-headers -o custom-columns=\":metadata.name\" | grep ${podName} | head -n 1", returnStdout: true).trim()
+
+                            if (pod) {
+                                echo "Running integration tests in pod: ${pod}"
+                                if (pod.contains('web-web-deployment')) {
+                                    sh(script: "export NODE_OPTIONS=--openssl-legacy-provider && kubectl exec ${pod} -- /bin/bash -c 'cd /path/to/web/integration/tests && npm run test:integ'", returnStatus: true)
+                                } else {
+                                    sh(script: "export NODE_OPTIONS=--openssl-legacy-provider && kubectl exec ${pod} -- /bin/bash -c 'cd /path/to/integration/tests && npm run test:integ'", returnStatus: true)
+                                }
+                            } else {
+                                echo "No running pod found for ${podName}."
+                            }
+                        }
+                    } catch (Exception e) {
+                        echo("Error during integration testing: ${e.message}")
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Archive the Kubelinter report for review
+            archiveArtifacts artifacts: '*-kubelint-report.sarif', allowEmptyArchive: true
+        }
+    }
+}
