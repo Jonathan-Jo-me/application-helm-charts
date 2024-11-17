@@ -7,13 +7,20 @@ pipeline {
                 checkout scm
             }
         }
-        
+
         stage('Kubelinter Helm Charts') {
             steps {
                 script {
                     try {
-                        // Clone the repo with the Helm charts
-                        sh 'git clone https://gitlab.com/Jonathan.mee/application-helm-charts.git'
+                        // Check if the directory already exists before cloning
+                        if (fileExists('application-helm-charts')) {
+                            echo "Directory 'application-helm-charts' already exists. Skipping clone."
+                        } else {
+                            // Clone the repo with the Helm charts if the directory doesn't exist
+                            sh 'git clone https://gitlab.com/Jonathan.mee/application-helm-charts.git'
+                        }
+                        
+                        // Navigate into the cloned repository (or existing one)
                         dir('application-helm-charts') {  // Use dir block to change to the correct working directory
                             // Define the list of chart directories
                             def chartDirs = ['database', 'api', 'web']  // Update with actual chart paths
@@ -21,7 +28,7 @@ pipeline {
                             // Loop through each chart and run Kubelinter
                             for (chart in chartDirs) {
                                 echo "Running Kubelinter on ${chart}..."
-                                
+
                                 // Run Kubelinter and capture both the status and the output
                                 def lintResult = sh(script: "kube-linter lint ${chart}/ --format=sarif", returnStatus: true, returnStdout: true).trim()
 
